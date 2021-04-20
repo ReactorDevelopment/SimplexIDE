@@ -1,0 +1,10 @@
+int: num = 1;
+func: void: ifBlock(bool: arg){
+    if(arg){
+        print("Arg True");
+    }
+    else{
+        print("Arg False");
+    }
+};
+ifBlock(5*1>1+1);
