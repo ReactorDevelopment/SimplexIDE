@@ -29,76 +29,64 @@ import com.reactordevelopment.simplex.simplexLang.SimplexException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
+/**Editor tab of environment, able to edit text files using custom keyboard*/
 public class Editor extends Fragment {
-    private View view;
-    private Context context;
+    /**The original editing pane for the code*/
     private EditText editor;
+    /**Any temporary editing pane that needs to be filled with text*/
     private EditText activeEditor;
-    private Activity activity;
-    private int cursor;
+    /**If the shift key has been pressed*/
     private boolean shift = false;
+    /**Saves text of editor, used when editor is refreshed and text has been cleared to restore text*/
     private final SpannableStringBuilder prevText = new SpannableStringBuilder("");
-    //private final String prevText = "";
-    //private static SpanWatcher watcher;
+    /**Color of operator in code*/
     private static final int OP_COLOR = Color.parseColor("#41abdc");
+    /**Color of reserved word in code*/
     private static final int RESERVED_COLOR = Color.parseColor("#001df5");
+    /**Color of number in code*/
     private static final int NUM_COLOR = Color.parseColor("#1cd4b5");
+    /**Color of boolean in code*/
     private static final int BOOL_COLOR = Color.parseColor("#4626e3");
+    /**Color of string in code*/
     private static final int STR_COLOR = Color.parseColor("#16bb16");
+    /**Color of id in code*/
     private static final int ID_COLOR = Color.parseColor("#8b5fc8");
+    /**Color of comment in code*/
     private static final int COMMENT_COLOR = Color.parseColor("#949494");
+    /**Color of generic text in code*/
     private static final int BASE_COLOR = Color.parseColor("#e3e3e3");
-
+    /**List of items where the second half if autocompleted after the first half*/
     private static final List<String> completables = Arrays.asList("\"\"", "()", "[]", "{}");
-    public Editor(){
-        super(R.layout.editor);
-        //cursorBlink();
-    }
 
+    /**Initializes the editor*/
+    public Editor(){ super(R.layout.editor); }
+
+    /**Creates view for editor*/
     @Override
-    public View onCreateView(LayoutInflater inflater,
-                             ViewGroup container,
-                             Bundle savedInstanceState) {
-        context = this.getActivity();
-        activity = this.getActivity();
-        view = inflater.inflate(R.layout.editor, container, false);
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        //The view
+        View view = inflater.inflate(R.layout.editor, container, false);
 
-        cursor = 0;
         editor = view.findViewById(R.id.editor);
-        editor.setText(prevText);
+        //If the selected database text is not null
+        if(MainActivity.dbText() != null)
+            editor.setText(MainActivity.dbText());
+        else
+            //Restore text
+            editor.setText(prevText);
+
         editor.setShowSoftInputOnFocus(false);
+        //Set the current editor as the active editor
         activeEditor = editor;
-        /*watcher = new SpanWatcher() {
-            @Override
-            public void onSpanAdded(final Spannable text, final Object what, final int start, final int end) {Log.i("SelectionAdd", start+", "+end);}
-
-            @Override
-            public void onSpanRemoved(final Spannable text, final Object what, final int start, final int end) {Log.i("SelectionRemove", start+", "+end);}
-
-            @Override
-            public void onSpanChanged(final Spannable text, final Object what,
-                                      final int ostart, final int oend, final int nstart, final int nend) {
-                if (what == Selection.SELECTION_START) {
-                    Log.i("SelectionStart", ostart+", "+oend+", "+nstart+", "+oend);
-                } else if (what == Selection.SELECTION_END) {
-                    Log.i("SelectionEnd", ostart+", "+oend+", "+nstart+", "+oend);
-                }
-            }
-        };*/
-
-        //editor.getText().setSpan(watcher, 0, 0, Spanned.SPAN_INCLUSIVE_EXCLUSIVE);
-
+        //Listens for any change in the text
         editor.addTextChangedListener(new TextWatcher() {
-
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                Log.i("Before", "Text: "+s+", To Replace: "+s.subSequence(start, start+count)+", Replacing Length: "+after);
-                int startSpan = indexBefore(s.toString(), '\n', start+count);
-                int endSpan = s.toString().indexOf('\n', start+count);
-                if(endSpan >= editor.getText().length()) endSpan = editor.getText().length();
+                //Log.i("Before", "Text: "+s+", To Replace: "+s.subSequence(start, start+count)+", Replacing Length: "+after);
+                //int startSpan = indexBefore(s.toString(), '\n', start+count);
+                //int endSpan = s.toString().indexOf('\n', start+count);
+                //if(endSpan >= editor.getText().length()) endSpan = editor.getText().length();
             }
-
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 Log.i("After", "Text: "+s+", New Text: "+s.subSequence(start, start+count)+", Replacing Length: "+before);
@@ -107,13 +95,14 @@ public class Editor extends Fragment {
                 startSpan = startSpan == -1 ? 0 : startSpan;
                 endSpan = endSpan == -1 ? s.length() : endSpan;
                 if(startSpan == endSpan) return;
-                Log.i("Timecheck", ""+System.currentTimeMillis());
                 editor.getText().setSpan(new ForegroundColorSpan(BASE_COLOR), startSpan != -1 ? startSpan : 0, endSpan != -1 ? endSpan : editor.getText().length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                //Gets tokens of text, and colors text accordingly
                 try {
                     ArrayList<Object[]> lexed = Lexer.lexer(s.subSequence(startSpan, endSpan).toString());
                     int tokenIndex;
                     int lostLen = 0;
                     String cloneStr = ""+s.toString();
+                    //For each token in the lexed form
                     for(Object[] token : lexed){
                         tokenIndex = cloneStr.indexOf(""+token[1]);
                         if(tokenIndex == -1) continue;
@@ -124,6 +113,7 @@ public class Editor extends Fragment {
                         if(token[0].equals("bool")) color = BOOL_COLOR;
                         if(token[0].equals("str") || token[1].equals("\"")) color = STR_COLOR;
                         if(token[0].equals("id")) color = ID_COLOR;
+                        //Set color span
                         editor.getText().setSpan(new ForegroundColorSpan(color), tokenIndex+lostLen, tokenIndex+token[1].toString().length()+lostLen, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                         String tmp = cloneStr.substring(tokenIndex+token[1].toString().length());
                         lostLen += cloneStr.length()-tmp.length();
@@ -132,7 +122,7 @@ public class Editor extends Fragment {
                 } catch (SimplexException e) {
                     Log.i("LexerError", s.subSequence(startSpan, endSpan).toString()+" contains an error");
                 }
-                Log.i("Timecheck2", ""+System.currentTimeMillis());
+                //Fill in spans for strings, new lines, and comments
                 for (int i=0; i<s.length(); i++){
                     char at = s.toString().charAt(i);
                     if(at == '"')
@@ -147,19 +137,14 @@ public class Editor extends Fragment {
                     }
 
                 }
-                Log.i("Timecheck3", ""+System.currentTimeMillis());
             }
 
             @Override
-            public void afterTextChanged(Editable s) {
-                //Log.i("AfterTextChange", s.toString());
-                //editor.getText().setSpan(watcher, 0, 0, Spanned.SPAN_INCLUSIVE_EXCLUSIVE);
-                /*if(editor.getText().length() >= 5)
-                    editor.getText().setSpan(new ForegroundColorSpan(Color.BLUE), 0, 5, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);*/
-            }
+            public void afterTextChanged(Editable s) {}
         });
-
+        //The keyboard layout
         ConstraintLayout keyboard = view.findViewById(R.id.keyLayout);
+        //Give each key an action for when shift is and isn't true
         for(int index = 0; index < keyboard.getChildCount(); index++) {
             TextView nextChild = (TextView) keyboard.getChildAt(index);
             if(nextChild.getText().length() == 1)
@@ -176,28 +161,34 @@ public class Editor extends Fragment {
         keyboard.findViewById(R.id.boardSpaceCover).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View view) { append(" "); }
         });
+        //The symbol keyboard layout
         ConstraintLayout symKeyboard = view.findViewById(R.id.sym_keyLayout);
+        //Give each key itd actions
         for(int index = 0; index < symKeyboard.getChildCount(); index++) {
             TextView nextChild = (TextView) symKeyboard.getChildAt(index);
             if(nextChild.getText().length() == 1)
                 nextChild.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
+                        //Add text
                         append(nextChild.getText().toString());
+                        //Reset prevText
                         prevText.clear();
                         prevText.append(editor.getText());
                     }
                 });
 
         }
+        //Add character for space ar
         symKeyboard.findViewById(R.id.boardSpaceCover).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View view) { append(" "); }
         });
+        //Give listener to shift keys
         View.OnClickListener shiftListener = new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 shift = !shift;
-                for(int index = 0; index < keyboard.getChildCount(); index++) {
+                /*for(int index = 0; index < keyboard.getChildCount(); index++) {
                     TextView nextChild = (TextView) keyboard.getChildAt(index);
                     if(nextChild.getText().length() == 1) {
                         if(shift)
@@ -205,28 +196,27 @@ public class Editor extends Fragment {
                         else
                             nextChild.setText(nextChild.getText().toString().toLowerCase());
                     }
-                }
+                }*/
             }
         };
+        //Give shift listeners to both shift keys
         keyboard.findViewById(R.id.boardShift).setOnClickListener(shiftListener);
         symKeyboard.findViewById(R.id.boardShift).setOnClickListener(shiftListener);
-
+        //Assign backspace listeners
         keyboard.findViewById(R.id.boardBacksp).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) { remove(); }});
-
         symKeyboard.findViewById(R.id.boardBacksp).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) { remove(); }});
-
+        //Assign enter keys
         keyboard.findViewById(R.id.boardReturn).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) { append("\n"); }});
-
         symKeyboard.findViewById(R.id.boardReturn).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) { append("\n"); }});
-
+        //Add listener to switch to symbol board
         view.findViewById(R.id.boardSymbol).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -234,7 +224,7 @@ public class Editor extends Fragment {
                 symKeyboard.setVisibility(View.VISIBLE);
             }
         });
-
+        //Add listener to switch from symbol board
         view.findViewById(R.id.boardAlpha).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -242,26 +232,10 @@ public class Editor extends Fragment {
                 keyboard.setVisibility(View.VISIBLE);
             }
         });
-
-        /*
-
-        Button buttonLeft = view.findViewById(R.id.buttonLeft);
-        buttonLeft.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                cursorLeft();
-            }
-        });
-
-        Button buttonRight = view.findViewById(R.id.buttonRight);
-        buttonRight.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                cursorRight();
-            }
-        });*/
         return view;
     }
+    /**Shift activeEditor away from original and to new editor
+     * If editText is null, shift back to original editor pane*/
     public void keyboardFocusTo(EditText editText){
         if(editText != null){
             editor.setVisibility(View.INVISIBLE);
@@ -272,54 +246,53 @@ public class Editor extends Fragment {
             activeEditor = editor;
         }
     }
+    /**Returns the code contained in the active editor*/
     public String getCode(){
         return activeEditor.getText().toString();
     }
-
+    /**Inserts the given string into the active editor where the cursor is currently placed*/
     public void append(String append){
-        Log.i("TimecheckAppend", ""+System.currentTimeMillis());
+        //Get the cursor position
         int cursor = activeEditor.getSelectionStart();
+        //Inserts the given text at the cursor
         activeEditor.getText().insert(cursor, append);
+        //The new text of the editor
         String text = activeEditor.getText().toString();
-        Log.i("Curseo", cursor+", "+text.length());
         cursor ++;
-        //editor.setSelection(cursor);
         if(cursor-1  == text.length()-1)
+            //Loop for text to autocomplete
             for(String s : completables)
+                //If the added text matches
                 if (append.equals(""+s.charAt(0))) {
+                    //Add the completion
                     activeEditor.getText().insert(cursor, String.valueOf(s.charAt(1)));
+                    //Puts cursor between append and the completed half
                     activeEditor.setSelection(cursor);
                 }
-                    //editor.setText(text.substring(0, cursor) + s.charAt(1) + text.substring(cursor));
-
-        //editor.getText().setSpan(watcher, 0, 0, Spanned.SPAN_INCLUSIVE_EXCLUSIVE);
     }
-
+    /**Removes the character at the cursor*/
     public void remove(){
+        //Get the cursor
         int cursor = activeEditor.getSelectionStart();
         if(cursor <= 0) return;
-        
+        //Get the text of the editor
         String text = activeEditor.getText().toString();
-        if(cursor < text.length() && cursor > 0){
+        if(cursor < text.length()){
+            //Removed other half of completables
             for(String s : completables)
                 if(text.charAt(cursor-1) == s.charAt(0) && text.charAt(cursor) == s.charAt(1)) {
                     activeEditor.getText().replace(cursor, cursor+1, "");
-                    //editor.setText(text.substring(0, cursor) + text.substring(cursor + 1));
                     break;
                 }
         }
-        //editor.setText(text.substring(0, cursor - 1) + text.substring(cursor));
+        //Removes character and decrements cursor
         activeEditor.getText().replace(cursor-1, cursor, "");
         cursor --;
         activeEditor.setSelection(cursor);
-
-        //editor.getText().setSpan(watcher, 0, 0, Spanned.SPAN_INCLUSIVE_EXCLUSIVE);
     }
-
-    public void clear(){
-        activeEditor.getText().replace(0, activeEditor.getText().length(), "");
-    }
-
+    /**Clears active editor of all text*/
+    public void clear(){ activeEditor.getText().replace(0, activeEditor.getText().length(), ""); }
+    /**Finds occurrence of search before index in string s*/
     private int indexBefore(String s, char search, int index){
         int foundIndex = -1;
         for(int i=0; i<index; i++){
@@ -328,36 +301,4 @@ public class Editor extends Fragment {
         }
         return foundIndex;
     }
-    
-    /*private void cursorBlink(){
-        Fragment frag = this;
-        new Thread(){
-            @Override
-            public void run() {
-                boolean blinkOn = true;
-                while(!isInterrupted()){
-                    try {
-                        Thread.sleep(500);
-                        if(activity != null && editor != null) {
-                            boolean finalBlinkOn = blinkOn;
-                            activity.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    SpannableString content = new SpannableString(editor.getText().toString());
-                                    if(cursor < content.length()) {
-                                        if (finalBlinkOn)
-                                            content.setSpan(new UnderlineSpan(), cursor, cursor + 1, 0);
-                                        else content.setSpan(null, cursor, cursor + 1, 0);
-                                    }
-
-                                    editor.setText(content);
-                                }
-                            });
-                        }
-                        blinkOn = !blinkOn;
-                    }catch (Exception e){e.printStackTrace();}
-                }
-            }
-        }.start();
-    }*/
 }

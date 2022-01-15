@@ -10,6 +10,8 @@
     <string name="interpView">Build: Interpreted</string>
     <string name="consoleTitle">Console\n</string>
     <string name="data">Data</string>
+    <string name="left">Left</string>
+    <string name="right">Right</string>
     <string name="editor">Editor</string>
     <string name="execute">Execute</string>
     <string name="q">q</string>
@@ -78,4 +80,6 @@
     <string name="under">_</string>
     <string name="literal">literal</string>
     <string name="var">var</string>
+    <string name="fileBlankWarn">File name cannot be blank!</string>
+    <string name="objectArr">Object[]</string>
 </resources>
